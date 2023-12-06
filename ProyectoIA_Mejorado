@@ -1,0 +1,78 @@
+import tensorflow as tf
+from tensorflow import keras
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Cargar el conjunto de datos MNIST
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+# Mostrar una imagen del conjunto de entrenamiento
+plt.imshow(x_train[0], cmap="gray")
+plt.show()
+
+# Normalizar los valores de píxeles en el rango [0, 1]
+x_train = x_train / 255.0
+x_test = x_test / 255.0
+
+# Definir la arquitectura del codificador
+encoder_input = keras.Input(shape=(28, 28, 1), name='img')
+x = keras.layers.Flatten()(encoder_input)
+encoder_output = keras.layers.Dense(64, activation="relu")(x)
+encoder = keras.Model(encoder_input, encoder_output, name="encoder")
+
+# Definir la arquitectura del decodificador
+decoder_input = keras.layers.Dense(64, activation="relu")(encoder_output)
+x = keras.layers.Dense(784, activation="relu")(decoder_input)
+decoder_output = keras.layers.Reshape((28, 28, 1))(x)
+
+# Definir el modelo autoencoder combinando el codificador y el decodificador
+autoencoder = keras.Model(encoder_input, decoder_output, name='autoencoder')
+
+# Compilar el modelo autoencoder con el optimizador y la función de pérdida
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+autoencoder.compile(optimizer=optimizer, loss='mse')
+autoencoder.summary()
+
+# Entrenar el autoencoder con los datos de entrenamiento
+autoencoder.fit(x_train, x_train, epochs=3, batch_size=32, validation_split=0.1)
+
+# Ejemplo de codificación de una imagen del conjunto de prueba
+example = encoder.predict([x_test[0].reshape(-1, 28, 28, 1)])[0]
+print(example.shape)
+
+# Visualizar la representación codificada
+plt.imshow(example.reshape((8, 8)), cmap="gray")
+plt.show()
+
+# Visualizar la imagen original y la imagen decodificada por el autoencoder
+for d in x_test[:5]:
+    ae_out = autoencoder.predict(d.reshape(-1, 28, 28, 1))
+    img = ae_out[0]
+
+    plt.figure(figsize=(8, 4))
+
+    # Imagen original
+    plt.subplot(1, 2, 1)
+    plt.imshow(d.reshape(28, 28), cmap='gray')
+    plt.title('Original')
+    plt.axis('off')
+
+    # Imagen decodificada por el autoencoder
+    plt.subplot(1, 2, 2)
+    plt.imshow(img.reshape(28, 28), cmap='gray')
+    plt.title('Decodificado')
+    plt.axis('off')
+
+    plt.show()
+
+# Redimensionar una imagen del conjunto de prueba y volver a su tamaño original
+smaller = cv2.resize(x_test[0], (8, 8))
+back_to_original = cv2.resize(smaller, (28, 28))
+
+# Visualizar las imágenes redimensionadas
+plt.imshow(smaller, cmap="gray")
+plt.show()
+
+plt.imshow(back_to_original, cmap="gray")
+plt.show()
